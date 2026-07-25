@@ -4,10 +4,11 @@ from mcp.server.fastmcp import FastMCP
 
 from .models import AtlasReceipt, GeocodeRequest, NearbyRequest, ReverseRequest, RouteRequest
 from .service import AtlasService
+from .settings import AtlasSettings
 
 
 mcp = FastMCP("AGENTROPOLIS-ATLAS", json_response=True)
-service = AtlasService()
+service = AtlasService(AtlasSettings.from_env())
 
 
 @mcp.tool()
@@ -18,7 +19,7 @@ def atlas_geocode(request: GeocodeRequest) -> dict:
 
 @mcp.tool()
 def atlas_reverse(request: ReverseRequest) -> dict:
-    """Resolve a coordinate to the nearest known feature."""
+    """Resolve an authorized coordinate to the nearest known feature."""
     return service.reverse(request).model_dump(mode="json")
 
 
