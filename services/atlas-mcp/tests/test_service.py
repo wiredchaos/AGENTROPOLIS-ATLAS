@@ -2,11 +2,13 @@ import pytest
 from pydantic import ValidationError
 
 from atlas_mcp.models import (
+    AtlasReceipt,
     AuthorityGeometry,
     Coordinate,
     GeocodeRequest,
     Mandate,
     NearbyRequest,
+    ReverseRequest,
     RouteRequest,
 )
 from atlas_mcp.providers import haversine_meters
@@ -125,7 +127,6 @@ def test_route_contract_accepts_bike_and_transit(service: AtlasService, mandate:
 def test_reverse_rejects_outside_mock_coverage(service: AtlasService, mandate: Mandate) -> None:
     wide_mandate = mandate.model_copy(
         update={
-            "max_radius_meters": 5000,
             "authority_geometry": AuthorityGeometry(
                 center=Coordinate(longitude=139.6917, latitude=35.6895),
                 radius_meters=10000,
@@ -134,7 +135,7 @@ def test_reverse_rejects_outside_mock_coverage(service: AtlasService, mandate: M
     )
     with pytest.raises(LookupError, match="outside mock provider coverage"):
         service.reverse(
-            __import__("atlas_mcp.models", fromlist=["ReverseRequest"]).ReverseRequest(
+            ReverseRequest(
                 coordinate=Coordinate(longitude=139.6917, latitude=35.6895),
                 mandate=wide_mandate,
             )
@@ -163,5 +164,7 @@ def test_receipt_validation(service: AtlasService, mandate: Mandate) -> None:
 
 def test_receipt_rejects_empty_tool(service: AtlasService, mandate: Mandate) -> None:
     result = service.geocode(GeocodeRequest(query="Sacramento City Hall", mandate=mandate))
+    payload = result.receipt.model_dump()
+    payload["tool"] = ""
     with pytest.raises(ValidationError):
-        result.receipt.model_copy(update={"tool": ""}).model_dump_json()
+        AtlasReceipt.model_validate(payload)
